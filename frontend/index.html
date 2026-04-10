@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>GymProgress</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .muscle-btn { transition: all 0.1s ease; }
+        .muscle-btn.active { background-color: #ef4444; color: white; transform: scale(0.96); }
+    </style>
+</head>
+<body class="bg-gray-900 text-white pb-20">
+    <div class="max-w-2xl mx-auto p-4">
+        <h1 class="text-3xl font-bold mb-6 text-center">🏋️ GymProgress</h1>
+
+        <!-- Current session info -->
+        <div id="sessionStatus" class="bg-gray-800 p-3 rounded-lg mb-4 text-center text-sm">
+            No active session. Click "Start Session" below.
+        </div>
+
+        <!-- Commute buttons -->
+        <div class="grid grid-cols-2 gap-3 mb-6">
+            <button onclick="recordEvent('departure')" class="bg-blue-600 p-3 rounded-xl font-bold">🚗 Left Home</button>
+            <button onclick="recordEvent('check_in')" class="bg-green-600 p-3 rounded-xl font-bold">✅ Arrived Gym</button>
+            <button onclick="recordEvent('check_out')" class="bg-yellow-600 p-3 rounded-xl font-bold">🚪 Left Gym</button>
+            <button onclick="recordEvent('homecoming')" class="bg-purple-600 p-3 rounded-xl font-bold">🏠 Arrived Home</button>
+        </div>
+
+        <!-- New session starter -->
+        <button id="startSessionBtn" onclick="startNewSession()" class="w-full bg-indigo-700 p-3 rounded-xl font-bold mb-6">➕ Start New Session</button>
+
+        <!-- Exercise section -->
+        <div class="bg-gray-800 p-4 rounded-2xl mb-6">
+            <h2 class="text-xl font-semibold mb-3">📋 Exercise Log</h2>
+            
+            <div class="mb-3">
+                <label class="block text-sm mb-1">Select Exercise</label>
+                <select id="exerciseSelect" class="w-full bg-gray-700 p-2 rounded">
+                    <option value="">-- Choose or create new --</option>
+                </select>
+            </div>
+            
+            <div class="mb-3">
+                <label class="block text-sm mb-1">Or create new exercise</label>
+                <input type="text" id="newExerciseName" placeholder="Exercise name" class="w-full bg-gray-700 p-2 rounded mb-2">
+                <select id="exerciseType" class="w-full bg-gray-700 p-2 rounded mb-2">
+                    <option value="weight_lifting">Weight Lifting</option>
+                    <option value="cardio">Cardio</option>
+                    <option value="flexibility">Flexibility</option>
+                </select>
+                <div class="flex items-center gap-3 mb-2">
+                    <label><input type="checkbox" id="isMachine"> Machine based</label>
+                    <label><input type="checkbox" id="isVolumeBased" checked> Volume based (sets/reps)</label>
+                </div>
+                <div class="mb-2">
+                    <label class="block text-sm">Muscle groups (click to select multiple)</label>
+                    <div id="muscleGrid" class="flex flex-wrap gap-2 mt-1">
+                        <!-- JS will populate -->
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="block text-sm">Exercise images (URLs)</label>
+                    <div id="imageUrlList" class="flex flex-wrap gap-2 mb-1"></div>
+                    <input type="text" id="imageUrlInput" placeholder="Paste image URL and press Enter" class="w-full bg-gray-700 p-2 rounded">
+                </div>
+                <button onclick="createNewExercise()" class="bg-green-700 px-3 py-1 rounded text-sm">➕ Save New Exercise</button>
+            </div>
+
+            <!-- Active exercise logging -->
+            <div id="activeExercisePanel" class="mt-4 border-t border-gray-600 pt-3 hidden">
+                <div class="flex justify-between items-center">
+                    <span class="font-bold">Now doing: <span id="currentExerciseName"></span></span>
+                    <label class="flex items-center gap-1"><input type="checkbox" id="failureToggle"> Failure reached</label>
+                </div>
+                <button onclick="startExerciseLog()" class="bg-red-600 w-full mt-2 p-2 rounded">▶ Start Exercise (logs start time)</button>
+                <div id="setsContainer" class="mt-3"></div>
+                <button onclick="endCurrentExercise()" class="bg-gray-600 w-full mt-2 p-2 rounded">🏁 Finish Exercise</button>
+            </div>
+        </div>
+
+        <!-- Pain quick log (optional) -->
+        <div class="bg-gray-800 p-4 rounded-2xl">
+            <h2 class="text-lg font-semibold mb-2">🤕 Log Pain (for current set)</h2>
+            <div class="flex gap-2 flex-wrap">
+                <button onclick="addPain('lower back')" class="bg-gray-700 px-3 py-1 rounded">Lower back</button>
+                <button onclick="addPain('knee')" class="bg-gray-700 px-3 py-1 rounded">Knee</button>
+                <button onclick="addPain('shoulder')" class="bg-gray-700 px-3 py-1 rounded">Shoulder</button>
+                <button onclick="addPain('elbow')" class="bg-gray-700 px-3 py-1 rounded">Elbow</button>
+                <button onclick="addPain('wrist')" class="bg-gray-700 px-3 py-1 rounded">Wrist</button>
+            </div>
+            <input type="text" id="painIntensity" placeholder="Intensity 1-5" class="mt-2 bg-gray-700 p-1 rounded w-24">
+            <span id="painPreview" class="text-xs ml-2"></span>
+        </div>
+
+        <!-- Export/Import -->
+        <div class="flex gap-3 mt-6">
+            <button onclick="exportData()" class="bg-teal-700 p-2 rounded flex-1">📤 Export JSON</button>
+            <input type="file" id="importFile" accept=".json" class="hidden" onchange="importData(this)">
+            <button onclick="document.getElementById('importFile').click()" class="bg-amber-700 p-2 rounded flex-1">📥 Import JSON</button>
+        </div>
+    </div>
+
+    <script>
+        // ---------- Global state ----------
+        let currentSessionId = null;
+        let currentLogId = null;
+        let currentSetNumber = 1;
+        let setStartTime = null;
+        let restTimerInterval = null;
+        let currentExerciseId = null;
+        let selectedMuscles = [];
+
+        const API_BASE = "http://localhost:8000"; // change to your VPS IP if needed
+
+        // Helper fetch with error handling
+        async function apiFetch(url, options = {}) {
+            const res = await fetch(`${API_BASE}${url}`, {
+                headers: { 'Content-Type': 'application/json' },
+                ...options
+            });
+            if (!res.ok) throw new Error(await res.text());
+            return res.json();
+        }
+
+        // Load exercise library
+        async function loadExercises() {
+            const exercises = await apiFetch("/exercises");
+            const select = document.getElementById("exerciseSelect");
+            select.innerHTML = '<option value="">-- Choose exercise --</option>';
+            exercises.forEach(ex => {
+                const option = document.createElement("option");
+                option.value = ex.id;
+                option.textContent = `${ex.name} (${ex.target_muscles?.join(',') || 'any'})`;
+                select.appendChild(option);
+            });
+        }
+
+        // Muscle group UI (with emoji images)
+        const muscleGroups = [
+            "chest", "back", "shoulders", "biceps", "triceps",
+            "quads", "hamstrings", "glutes", "calves", "core", "forearms"
+        ];
+        const muscleEmoji = {
+            chest: "💪", back: "🔙", shoulders: "🏋️", biceps: "💪", triceps: "💪",
+            quads: "🦵", hamstrings: "🦵", glutes: "🍑", calves: "🦶", core: "🏋️", forearms: "✋"
+        };
+        function renderMuscleGrid() {
+            const container = document.getElementById("muscleGrid");
+            container.innerHTML = "";
+            muscleGroups.forEach(m => {
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "muscle-btn bg-gray-700 px-2 py-1 rounded text-xs";
+                btn.innerHTML = `${muscleEmoji[m] || '💪'} ${m}`;
+                btn.onclick = () => {
+                    if (selectedMuscles.includes(m)) {
+                        selectedMuscles = selectedMuscles.filter(x => x !== m);
+                        btn.classList.remove("active");
+                    } else {
+                        selectedMuscles.push(m);
+                        btn.classList.add("active");
+                    }
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        // Image URL handling
+        let imageUrls = [];
+        function updateImagePreview() {
+            const container = document.getElementById("imageUrlList");
+            container.innerHTML = imageUrls.map((url, idx) => `
+                <div class="relative inline-block">
+                    <img src="${url}" class="h-10 w-10 object-cover rounded" onerror="this.src='https://placehold.co/100'">
+                    <button onclick="removeImage(${idx})" class="absolute -top-2 -right-2 bg-red-600 rounded-full w-5 h-5 text-xs">✕</button>
+                </div>
+            `).join('');
+        }
+        window.removeImage = (idx) => { imageUrls.splice(idx,1); updateImagePreview(); };
+        document.getElementById("imageUrlInput")?.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") {
+                let url = e.target.value.trim();
+                if (url) imageUrls.push(url);
+                updateImagePreview();
+                e.target.value = "";
+            }
+        });
+
+        async function createNewExercise() {
+            const name = document.getElementById("newExerciseName").value.trim();
+            if (!name) return alert("Enter exercise name");
+            const exercise_type = document.getElementById("exerciseType").value;
+            const is_machine = document.getElementById("isMachine").checked;
+            const is_volume_based = document.getElementById("isVolumeBased").checked;
+            const target_muscles = selectedMuscles;
+            const image_urls = imageUrls;
+            await apiFetch("/exercises", {
+                method: "POST",
+                body: JSON.stringify({ name, exercise_type, is_machine, is_volume_based, target_muscles, image_urls })
+            });
+            alert("Exercise saved!");
+            loadExercises();
+            // reset form
+            document.getElementById("newExerciseName").value = "";
+            selectedMuscles = [];
+            imageUrls = [];
+            updateImagePreview();
+            renderMuscleGrid();
+        }
+
+        // Session handling
+        async function startNewSession() {
+            const data = await apiFetch("/sessions", { method: "POST", body: JSON.stringify({}) });
+            currentSessionId = data.session_id;
+            document.getElementById("sessionStatus").innerHTML = `Active session: ${currentSessionId.substring(0,8)}... | <button onclick="endSession()" class="text-red-400">End session?</button>`;
+        }
+
+        async function recordEvent(eventType) {
+            if (!currentSessionId) return alert("Start a session first!");
+            let field = "";
+            if (eventType === "departure") field = "departure_time";
+            else if (eventType === "check_in") field = "check_in_time";
+            else if (eventType === "check_out") field = "check_out_time";
+            else if (eventType === "homecoming") field = "homecoming_time";
+            const payload = { [field]: new Date().toISOString() };
+            await apiFetch(`/sessions/${currentSessionId}`, { method: "PATCH", body: JSON.stringify(payload) });
+            alert(`${eventType} recorded at ${new Date().toLocaleTimeString()}`);
+        }
+
+        async function endSession() {
+            if (!currentSessionId) return;
+            // optionally ask for mood
+            const mood = prompt("Overall mood? (optional)");
+            if (mood) await apiFetch(`/sessions/${currentSessionId}`, { method: "PATCH", body: JSON.stringify({ overall_mood: mood }) });
+            currentSessionId = null;
+            document.getElementById("sessionStatus").innerHTML = "No active session.";
+        }
+
+        // Exercise logging
+        function selectExercise() {
+            const select = document.getElementById("exerciseSelect");
+            currentExerciseId = select.value;
+            if (currentExerciseId) {
+                const selectedText = select.options[select.selectedIndex].text;
+                document.getElementById("currentExerciseName").innerText = selectedText;
+                document.getElementById("activeExercisePanel").classList.remove("hidden");
+            } else {
+                document.getElementById("activeExercisePanel").classList.add("hidden");
+            }
+        }
+        document.getElementById("exerciseSelect").addEventListener("change", selectExercise);
+
+        async function startExerciseLog() {
+            if (!currentSessionId) return alert("Start a session first");
+            if (!currentExerciseId) return alert("Select an exercise");
+            const isFailure = document.getElementById("failureToggle").checked;
+            const data = await apiFetch("/exercise_logs", {
+                method: "POST",
+                body: JSON.stringify({ session_id: currentSessionId, exercise_id: currentExerciseId, is_failure: isFailure })
+            });
+            currentLogId = data.log_id;
+            currentSetNumber = 1;
+            document.getElementById("setsContainer").innerHTML = "";
+            addSetCard(); // create first set card
+        }
+
+        function addSetCard() {
+            const container = document.getElementById("setsContainer");
+            const setDiv = document.createElement("div");
+            setDiv.className = "bg-gray-700 p-2 rounded mt-2";
+            setDiv.id = `set-${currentSetNumber}`;
+            setDiv.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <span class="font-bold">Set ${currentSetNumber}</span>
+                    <button onclick="startSetTimer(${currentSetNumber})" class="bg-blue-500 px-2 py-1 rounded text-xs">Start set</button>
+                    <button onclick="endSet(${currentSetNumber})" class="bg-green-500 px-2 py-1 rounded text-xs">End set</button>
+                </div>
+                <div class="flex gap-2 mt-1">
+                    <input type="number" placeholder="kg" id="weight-${currentSetNumber}" class="w-20 bg-gray-600 p-1 rounded text-sm">
+                    <input type="number" placeholder="reps" id="reps-${currentSetNumber}" class="w-20 bg-gray-600 p-1 rounded text-sm">
+                </div>
+                <div class="text-xs text-gray-300 mt-1">
+                    <span id="set-timer-${currentSetNumber}">Not started</span>
+                </div>
+            `;
+            container.appendChild(setDiv);
+            currentSetNumber++;
+        }
+
+        let setTimers = {};
+        function startSetTimer(setNum) {
+            if (setTimers[setNum]) clearInterval(setTimers[setNum]);
+            const start = Date.now();
+            const timerSpan = document.getElementById(`set-timer-${setNum}`);
+            setTimers[setNum] = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - start) / 1000);
+                timerSpan.innerText = `Elapsed: ${elapsed}s`;
+            }, 1000);
+            window[`setStart_${setNum}`] = new Date().toISOString();
+        }
+
+        async function endSet(setNum) {
+            if (setTimers[setNum]) clearInterval(setTimers[setNum]);
+            const endTime = new Date().toISOString();
+            const startTime = window[`setStart_${setNum}`];
+            if (!startTime) return alert("Start the set first");
+            const weight = document.getElementById(`weight-${setNum}`).value;
+            const reps = document.getElementById(`reps-${setNum}`).value;
+            const painPreview = document.getElementById("painPreview").innerText;
+            let painData = null;
+            if (painPreview) {
+                let intensity = document.getElementById("painIntensity").value;
+                painData = { location: painPreview, intensity: parseInt(intensity) || null };
+            }
+            await apiFetch("/sets", {
+                method: "POST",
+                body: JSON.stringify({
+                    log_id: currentLogId,
+                    set_number: setNum,
+                    weight_kg: weight ? parseFloat(weight) : null,
+                    reps: reps ? parseInt(reps) : null,
+                    start_time: startTime,
+                    end_time: endTime,
+                    pain_data: painData
+                })
+            });
+            document.getElementById(`set-${setNum}`).style.opacity = "0.6";
+            // Automatically add next set card
+            addSetCard();
+        }
+
+        async function endCurrentExercise() {
+            if (!currentLogId) return;
+            const feeling = prompt("Feeling 1-5? (optional)");
+            await apiFetch(`/exercise_logs/${currentLogId}/end?feeling_score=${feeling || ''}`, { method: "PATCH" });
+            currentLogId = null;
+            document.getElementById("activeExercisePanel").classList.add("hidden");
+            alert("Exercise finished");
+        }
+
+        // Pain helper
+        function addPain(location) {
+            document.getElementById("painPreview").innerText = location;
+        }
+
+        // Export / Import
+        async function exportData() {
+            const data = await apiFetch("/export");
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = `gym_export_${new Date().toISOString()}.json`;
+            a.click();
+        }
+        async function importData(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const text = await file.text();
+            const data = JSON.parse(text);
+            await apiFetch("/import", { method: "POST", body: JSON.stringify(data) });
+            alert("Data imported! Refresh page to see changes.");
+            location.reload();
+        }
+
+        // Initialize
+        renderMuscleGrid();
+        loadExercises();
+    </script>
+</body>
+</html>
