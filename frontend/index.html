@@ -19,6 +19,30 @@
             No active session. Click "Start Session" below.
         </div>
 
+        <!-- Biometric input (shown only when session active) -->
+        <div id="biometricPanel" class="bg-gray-800 p-3 rounded-lg mb-4 hidden">
+            <h3 class="font-semibold mb-2">📊 Biometric Data (optional)</h3>
+            <div class="flex flex-wrap gap-3">
+                <div>
+                    <label class="block text-xs">Body weight (kg)</label>
+                    <input type="number" id="bodyWeight" step="0.1" class="bg-gray-700 p-1 rounded w-24">
+                </div>
+                <div>
+                    <label class="block text-xs">Body fat %</label>
+                    <input type="number" id="bodyFat" step="0.1" class="bg-gray-700 p-1 rounded w-24">
+                </div>
+                <div>
+                    <label class="block text-xs">Resting HR</label>
+                    <input type="number" id="restingHr" class="bg-gray-700 p-1 rounded w-20">
+                </div>
+            </div>
+            <div class="mt-2">
+                <label class="block text-xs">Other metrics (JSON)</label>
+                <textarea id="otherBiometrics" rows="2" placeholder='{"waist_cm": 80, "notes": "..."}' class="w-full bg-gray-700 p-1 rounded text-xs"></textarea>
+            </div>
+            <button onclick="saveBiometrics()" class="bg-blue-600 text-xs px-2 py-1 rounded mt-2">💾 Save biometrics</button>
+        </div>
+
         <!-- Commute buttons -->
         <div class="grid grid-cols-2 gap-3 mb-6">
             <button onclick="recordEvent('departure')" class="bg-blue-600 p-3 rounded-xl font-bold">🚗 Left Home</button>
@@ -98,6 +122,10 @@
             <button onclick="exportData()" class="bg-teal-700 p-2 rounded flex-1">📤 Export JSON</button>
             <input type="file" id="importFile" accept=".json" class="hidden" onchange="importData(this)">
             <button onclick="document.getElementById('importFile').click()" class="bg-amber-700 p-2 rounded flex-1">📥 Import JSON</button>
+        </div>
+        <div class="bg-gray-800 p-4 rounded-2xl mt-4">
+            <h2 class="text-lg font-semibold mb-2">📈 Weight History</h2>
+            <div id="weightHistory" class="text-sm space-y-1 max-h-40 overflow-y-auto"></div>
         </div>
     </div>
 
@@ -214,6 +242,57 @@
             const data = await apiFetch("/sessions", { method: "POST", body: JSON.stringify({}) });
             currentSessionId = data.session_id;
             document.getElementById("sessionStatus").innerHTML = `Active session: ${currentSessionId.substring(0,8)}... | <button onclick="endSession()" class="text-red-400">End session?</button>`;
+            document.getElementById("biometricPanel").classList.remove("hidden");
+            // Load any previously saved biometrics for this session (if you stored them)
+        }
+
+        // Show biometric panel when session starts
+        async function saveBiometrics() {
+            if (!currentSessionId) return alert("Start a session first");
+            const weight = document.getElementById("bodyWeight").value;
+            const bodyFat = document.getElementById("bodyFat").value;
+            const restingHr = document.getElementById("restingHr").value;
+            let other = {};
+            try {
+                other = JSON.parse(document.getElementById("otherBiometrics").value || "{}");
+            } catch(e) { console.warn("Invalid JSON"); }
+            
+            const biometric_data = {
+                body_fat_percentage: bodyFat ? parseFloat(bodyFat) : null,
+                resting_heart_rate: restingHr ? parseInt(restingHr) : null,
+                ...other
+            };
+            // Remove nulls
+            Object.keys(biometric_data).forEach(k => biometric_data[k] === null && delete biometric_data[k]);
+            
+            const payload = {};
+            if (weight) payload.body_weight_kg = parseFloat(weight);
+            if (Object.keys(biometric_data).length) payload.biometric_data = biometric_data;
+            
+            if (Object.keys(payload).length === 0) return alert("No data entered");
+            
+            await apiFetch(`/sessions/${currentSessionId}`, { 
+                method: "PATCH", 
+                body: JSON.stringify(payload) 
+            });
+            alert("Biometrics saved!");
+        }
+
+        // Also update endSession to optionally capture final biometrics
+        async function endSession() {
+            if (!currentSessionId) return;
+            const mood = prompt("Overall mood? (optional)");
+            // Ask for weight if not entered yet
+            let weight = document.getElementById("bodyWeight").value;
+            if (!weight && confirm("Record your body weight for this session?")) {
+                weight = prompt("Weight in kg:");
+            }
+            const payload = { overall_mood: mood };
+            if (weight) payload.body_weight_kg = parseFloat(weight);
+            await apiFetch(`/sessions/${currentSessionId}`, { method: "PATCH", body: JSON.stringify(payload) });
+            currentSessionId = null;
+            document.getElementById("sessionStatus").innerHTML = "No active session.";
+            document.getElementById("biometricPanel").classList.add("hidden");
         }
 
         async function recordEvent(eventType) {
@@ -226,15 +305,6 @@
             const payload = { [field]: new Date().toISOString() };
             await apiFetch(`/sessions/${currentSessionId}`, { method: "PATCH", body: JSON.stringify(payload) });
             alert(`${eventType} recorded at ${new Date().toLocaleTimeString()}`);
-        }
-
-        async function endSession() {
-            if (!currentSessionId) return;
-            // optionally ask for mood
-            const mood = prompt("Overall mood? (optional)");
-            if (mood) await apiFetch(`/sessions/${currentSessionId}`, { method: "PATCH", body: JSON.stringify({ overall_mood: mood }) });
-            currentSessionId = null;
-            document.getElementById("sessionStatus").innerHTML = "No active session.";
         }
 
         // Exercise logging

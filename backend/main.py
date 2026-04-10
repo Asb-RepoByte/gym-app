@@ -30,6 +30,8 @@ class SessionUpdate(BaseModel):
     homecoming_time: Optional[datetime] = None
     companions_count: Optional[int] = None
     overall_mood: Optional[str] = None
+    body_weight_kg: Optional[float] = None
+    biometric_data: Optional[Dict[str, Any]] = None 
 
 class ExerciseCreate(BaseModel):
     name: str

@@ -16,6 +16,8 @@ CREATE TABLE workout_sessions (
     homecoming_time TIMESTAMP,
     companions_count INTEGER DEFAULT 0,
     overall_mood TEXT,
+    body_weight_kg DECIMAL(5,2),
+    biometric_data JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
