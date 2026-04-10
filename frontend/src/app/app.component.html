@@ -1,0 +1,102 @@
+<div class="min-h-screen bg-gray-900 text-white p-4 font-sans">
+  <div class="max-w-md mx-auto relative pt-4">
+
+    <!-- Auth View -->
+    <div *ngIf="!isLoggedIn" class="bg-gray-800 p-6 rounded-2xl shadow-xl mt-12">
+      <h1 class="text-3xl font-bold mb-6 text-center text-blue-400">GymProgress Pro</h1>
+      <h2 class="text-xl mb-4">{{authMode === 'login' ? 'Login' : 'Register'}}</h2>
+      
+      <div *ngIf="authError" class="mb-4 p-3 bg-red-900 border border-red-500 rounded text-sm text-red-100">
+        {{authError}}
+      </div>
+
+      <input [(ngModel)]="email" type="email" placeholder="Email" class="w-full bg-gray-700 p-3 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <input [(ngModel)]="password" type="password" placeholder="Password" class="w-full bg-gray-700 p-3 rounded-lg mb-6 focus:outline-none focus:ring-2 focus:ring-blue-500">
+      
+      <button (click)="handleAuth()" class="w-full bg-blue-600 hover:bg-blue-500 transition-colors p-3 rounded-lg font-bold mb-4">
+        {{authMode === 'login' ? 'Sign In' : 'Sign Up'}}
+      </button>
+
+      <p class="text-center text-sm text-gray-400 cursor-pointer" (click)="authMode = authMode === 'login' ? 'register' : 'login'">
+        {{authMode === 'login' ? 'Need an account? Register' : 'Already have an account? Login'}}
+      </p>
+    </div>
+
+    <!-- Main View -->
+    <div *ngIf="isLoggedIn">
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-green-400">GymProgress Pro</h1>
+        <button (click)="logout()" class="text-sm text-gray-400 hover:text-white">Logout</button>
+      </div>
+
+      <!-- Dashboard -->
+      <div *ngIf="view === 'dashboard'">
+        <div class="bg-gray-800 p-5 rounded-2xl mb-6 shadow-lg">
+          <h2 class="text-xl font-semibold mb-4 text-gray-200">Session Logistics</h2>
+          
+          <button *ngIf="!currentSession" (click)="startSession()" class="w-full bg-blue-600 hover:bg-blue-500 p-4 rounded-xl font-bold shadow-md transition-all">
+            Leaving Home (Start Session)
+          </button>
+
+          <div *ngIf="currentSession" class="grid grid-cols-2 gap-4">
+            <button [disabled]="currentSession.CheckInTime" (click)="updateSessionTime('check_in_time')" 
+                    class="p-4 rounded-xl font-bold transition-all shadow-md"
+                    [ngClass]="currentSession.CheckInTime ? 'bg-gray-700 text-gray-500' : 'bg-green-600 hover:bg-green-500'">
+              Arrived at Gym
+            </button>
+            <button [disabled]="!currentSession.CheckInTime || currentSession.CheckOutTime" (click)="updateSessionTime('check_out_time')" 
+                    class="p-4 rounded-xl font-bold transition-all shadow-md"
+                    [ngClass]="(!currentSession.CheckInTime || currentSession.CheckOutTime) ? 'bg-gray-700 text-gray-500' : 'bg-yellow-600 hover:bg-yellow-500'">
+              Leaving Gym
+            </button>
+            <button [disabled]="!currentSession.CheckOutTime || currentSession.HomecomingTime" (click)="updateSessionTime('homecoming_time')" 
+                    class="p-4 rounded-xl font-bold transition-all shadow-md col-span-2"
+                    [ngClass]="(!currentSession.CheckOutTime || currentSession.HomecomingTime) ? 'bg-gray-700 text-gray-500' : 'bg-purple-600 hover:bg-purple-500'">
+              Arrived Home
+            </button>
+          </div>
+        </div>
+
+        <button *ngIf="currentSession" (click)="goToExercise()" class="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 p-4 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center transition-all">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          Log Exercise
+        </button>
+      </div>
+
+      <!-- Exercise Logger -->
+      <div *ngIf="view === 'exercise'" class="space-y-6">
+        <button (click)="goBack()" class="flex items-center text-gray-400 hover:text-white mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+          Back to Dashboard
+        </button>
+
+        <div class="bg-gray-800 p-5 rounded-2xl shadow-lg">
+          <input type="text" placeholder="Search Exercise..." class="w-full bg-gray-700 text-white p-3 rounded-xl mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          
+          <div class="text-center p-6 border-2 border-dashed border-gray-600 rounded-xl mb-4 bg-gray-900/50 hover:bg-gray-800 transition-colors cursor-pointer relative group">
+            <p class="text-gray-400 group-hover:text-gray-300">Drag & Drop Image Here</p>
+            <p class="text-xs text-gray-500 mt-1">or click to browse</p>
+          </div>
+
+          <div class="bg-gray-900 p-4 rounded-xl text-center mb-6 border border-gray-700">
+            <h3 class="text-sm font-semibold text-gray-400 mb-2 uppercase tracking-wider">Target Muscles Map</h3>
+            <!-- Placeholder for interactive SVG -->
+            <div class="w-full h-40 bg-gray-800 rounded bg-[url('https://upload.wikimedia.org/wikipedia/commons/4/49/Muscles_anterior_labeled.svg')] bg-cover bg-center opacity-70"></div>
+          </div>
+
+          <div class="flex items-center justify-between mb-4 bg-gray-700/50 p-3 rounded-lg">
+            <span class="font-medium text-red-400">Hit Failure?</span>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" class="sr-only peer">
+              <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
+            </label>
+          </div>
+
+          <button class="w-full bg-blue-600 hover:bg-blue-500 p-4 rounded-xl font-bold shadow-lg transition-all text-lg tracking-wide focus:ring-4 focus:ring-blue-500/50 outline-none">
+            START SET
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

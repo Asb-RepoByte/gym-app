@@ -10,7 +10,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
-      - "5440:5432"   # optional, for external DB tools
+      - "5440:5432"
     networks:
       - gym
 
@@ -22,7 +22,10 @@ services:
     depends_on:
       - db
     environment:
-      - DATABASE_URL=postgresql://abs:yourpassword@db:5432/gym
+      - DATABASE_URL=host=db user=abs password=yourpassword dbname=gym port=5432 sslmode=disable TimeZone=UTC
+      - JWT_SECRET=supersecret
+    networks:
+      - gym
 
   frontend:
     build: ./frontend
