@@ -12,7 +12,7 @@ import { HttpClientModule, HttpClient } from '@angular/common/http';
 })
 export class AppComponent implements OnInit {
   title = 'frontend';
-  apiUrl = 'http://localhost:8000/api';
+  apiUrl = '/api';
 
   isLoggedIn = false;
   token = '';
