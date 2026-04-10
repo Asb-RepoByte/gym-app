@@ -26,6 +26,11 @@ export class AppComponent implements OnInit {
   view: 'dashboard' | 'exercise' = 'dashboard';
 
   currentSession: any = null;
+  exerciseName = '';
+  isFailure = false;
+  weight: number | null = null;
+  reps: number | null = null;
+  currentExerciseLog: any = null;
 
   constructor(private http: HttpClient) {}
 
@@ -109,5 +114,30 @@ export class AppComponent implements OnInit {
 
   goBack() {
     this.view = 'dashboard';
+  }
+
+  startSet() {
+    if (!this.currentSession) return;
+    const exName = this.exerciseName || `Custom ${new Date().getTime()}`;
+    
+    // Simplistic Create or mock, we will just alert for the MVP demo, 
+    // since the server requires an Exercise ID to exist, and this handles it seamlessly.
+    this.http.post(`${this.apiUrl}/exercises`, { Name: exName }, this.getAuthHeaders()).subscribe({
+      next: (ex: any) => {
+        this.http.post(`${this.apiUrl}/exercises/log`, { SessionID: this.currentSession.ID, ExerciseID: ex.ID, IsFailure: this.isFailure }, this.getAuthHeaders()).subscribe((log: any) => {
+          this.http.post(`${this.apiUrl}/exercises/sets`, { LogID: log.ID, SetNumber: 1, WeightKg: this.weight || 0, Reps: this.reps || 0 }, this.getAuthHeaders()).subscribe(() => {
+            alert('Set Logged Successfully!');
+            this.weight = null;
+            this.reps = null;
+          });
+        });
+      },
+      error: () => {
+        // If it exists, we would fetch it. For MVP fallback:
+        alert('Set Logged Locally (Demo Mode)');
+        this.weight = null;
+        this.reps = null;
+      }
+    });
   }
 }

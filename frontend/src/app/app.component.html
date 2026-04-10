@@ -71,11 +71,22 @@
         </button>
 
         <div class="bg-gray-800 p-5 rounded-2xl shadow-lg">
-          <input type="text" placeholder="Search Exercise..." class="w-full bg-gray-700 text-white p-3 rounded-xl mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <input [(ngModel)]="exerciseName" type="text" placeholder="Search Exercise..." class="w-full bg-gray-700 text-white p-3 rounded-xl mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500">
           
           <div class="text-center p-6 border-2 border-dashed border-gray-600 rounded-xl mb-4 bg-gray-900/50 hover:bg-gray-800 transition-colors cursor-pointer relative group">
             <p class="text-gray-400 group-hover:text-gray-300">Drag & Drop Image Here</p>
             <p class="text-xs text-gray-500 mt-1">or click to browse</p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="text-xs text-gray-400 uppercase tracking-widest pl-1">Weight (kg)</label>
+              <input [(ngModel)]="weight" type="number" placeholder="0" class="w-full bg-gray-700 text-white p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-center font-bold text-lg mt-1">
+            </div>
+            <div>
+              <label class="text-xs text-gray-400 uppercase tracking-widest pl-1">Reps</label>
+              <input [(ngModel)]="reps" type="number" placeholder="0" class="w-full bg-gray-700 text-white p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-center font-bold text-lg mt-1">
+            </div>
           </div>
 
           <div class="bg-gray-900 p-4 rounded-xl text-center mb-6 border border-gray-700">
@@ -87,12 +98,12 @@
           <div class="flex items-center justify-between mb-4 bg-gray-700/50 p-3 rounded-lg">
             <span class="font-medium text-red-400">Hit Failure?</span>
             <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" class="sr-only peer">
+              <input type="checkbox" [(ngModel)]="isFailure" class="sr-only peer">
               <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
             </label>
           </div>
 
-          <button class="w-full bg-blue-600 hover:bg-blue-500 p-4 rounded-xl font-bold shadow-lg transition-all text-lg tracking-wide focus:ring-4 focus:ring-blue-500/50 outline-none">
+          <button (click)="startSet()" class="w-full bg-blue-600 hover:bg-blue-500 p-4 rounded-xl font-bold shadow-lg transition-all text-lg tracking-wide focus:ring-4 focus:ring-blue-500/50 outline-none">
             START SET
           </button>
         </div>
