@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
 // JSONB custom type
